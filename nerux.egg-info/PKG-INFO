@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: nerux
+Version: 0.1.0
+Summary: A lightweight deep learning framework built with NumPy
+Author-email: RAKIBUL HOQUE <mdefas221@gmail.com>
+License: MIT
+Keywords: deep-learning,machine-learning,autograd,neural-network,numpy
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.9
+Requires-Dist: numpy>=1.24

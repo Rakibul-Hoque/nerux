@@ -63,6 +63,7 @@ from .operation.mathematical_funcations import (
     ELU,
     LeakyReLU,
     Softmax,
+    LogSoftmax,
 )
 from .operation.scientific_operations import (
     Dot,
@@ -250,6 +251,11 @@ class Tensor:
     def __len__(self):
         return len(self.data)
 
+    def __eq__(self, other):
+        other = _ensure_tensor(other)
+        data = self.data == other.data
+        return Tensor(data)
+
     def __gt__(self, other):
         other = _ensure_tensor(other)
         data = (self.data > other.data).astype(np.float32)
@@ -317,7 +323,8 @@ class Tensor:
     #             self.data[idx] = value.data if isinstance(value, Tensor) else value
     def __array__(self, dtype=None):
         return self.data if dtype is None else self.data.astype(dtype)
-
+    def __hash__(self):
+     return id(self)
     def sum(self, axis=None, keepdims=False):
         return Sum.apply(self, axis=axis, keepdims=keepdims)
 
@@ -364,6 +371,9 @@ class Tensor:
 
     def softmax(self, axis=-1):
         return Softmax.apply(self, axis=axis)
+
+    def log_softmax(self, axis=-1):
+        return LogSoftmax.apply(self, axis=axis)
 
     def softplus(self):
         return Softplus.apply(self)

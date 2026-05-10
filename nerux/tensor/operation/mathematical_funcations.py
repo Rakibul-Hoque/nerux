@@ -1,5 +1,3 @@
-
-
 import numpy as np
 from ..function import Function
 
@@ -15,11 +13,9 @@ class ReLU(Function):
 
 class Sigmoid(Function):
     def forward(self, a):
-      out = np.where(a >= 0,
-          1 / (1 + np.exp(-a)),
-          np.exp(a) / (1 + np.exp(a)))
-      self.saved_out = out
-      return out
+        out = np.where(a >= 0, 1 / (1 + np.exp(-a)), np.exp(a) / (1 + np.exp(a)))
+        self.saved_out = out
+        return out
 
     def backward(self, grad_output):
         return grad_output * self.saved_out * (1 - self.saved_out)
@@ -49,6 +45,32 @@ class Softmax(Function):
         y = self.out
         dot = np.sum(grad_output * y, axis=self.axis, keepdims=True)
         return y * (grad_output - dot)
+
+
+class LogSoftmax(Function):
+    def __init__(self, *inputs, axis=-1):
+        super().__init__(*inputs)
+        self.axis = axis
+
+    def forward(self, a):
+        shifted = a - np.max(a, axis=self.axis, keepdims=True)
+
+        logsumexp = np.log(np.sum(np.exp(shifted), axis=self.axis, keepdims=True))
+
+        self.out = shifted - logsumexp
+        return self.out
+
+    def backward(self, grad_output):
+        # softmax from log_softmax output
+        probs = np.exp(self.out)
+
+        summed = np.sum(
+            grad_output,
+            axis=self.axis,
+            keepdims=True,
+        )
+
+        return grad_output - probs * summed
 
 
 class LeakyReLU(Function):
@@ -86,4 +108,4 @@ class Softplus(Function):
         return np.log(1 + np.exp(a))
 
     def backward(self, grad_output):
-        return grad_output / (1 + np.exp(-self.saved_a))   
+        return grad_output / (1 + np.exp(-self.saved_a))
