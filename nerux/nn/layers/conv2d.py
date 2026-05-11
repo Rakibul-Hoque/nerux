@@ -1,11 +1,10 @@
-from ...tensor import Tensor
+from ...tensor import factory as init
 from .base import Base
-from ..functional.conv2d import Conv2DFunction  # adjust import path
+from ..functional.conv2d import Conv2DFunction
 import numpy as np
 
 
 class Conv2D(Base):
-
     def __init__(
         self,
         out_channels,
@@ -18,7 +17,7 @@ class Conv2D(Base):
         super().__init__()
         self.out_channels = out_channels
 
-        # Normalize to tuples
+      
         self.kernel_size = (
             (kernel_size, kernel_size)
             if isinstance(kernel_size, int)
@@ -34,18 +33,16 @@ class Conv2D(Base):
         KH, KW = self.kernel_size
         scale = np.sqrt(2.0 / (C_in * KH * KW))
         W = np.random.randn(self.out_channels, C_in, KH, KW) * scale
-        self.W = self.add_parameter("W", Tensor(W, requires_grad=True))
+        self.W = self.add_parameter("W", init.tensor(W, requires_grad=True))
         if self.use_bias:
             self.B = self.add_parameter(
-                "B", Tensor(np.zeros((self.out_channels,)), requires_grad=True)
+                "B", init.tensor(np.zeros((self.out_channels,)), requires_grad=True)
             )
         else:
             self.B = None
 
     def forward(self, x):
-        
-
-        b = self.B if self.use_bias else Tensor.zeros((self.out_channels,))
+        b = self.B if self.use_bias else init.zeros((self.out_channels,))
         return Conv2DFunction.apply(
             x,
             self.W,

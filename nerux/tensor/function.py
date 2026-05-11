@@ -12,7 +12,7 @@ class Function:
     def apply(cls, *inputs, **kwargs):
         from .tensor import Tensor
 
-        global _grad_enabled
+        
 
         ctx = cls(*inputs, **kwargs)
 

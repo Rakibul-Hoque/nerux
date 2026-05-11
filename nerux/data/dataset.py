@@ -1,5 +1,8 @@
 import numpy as np
+
 from ..tensor import Tensor
+from ..tensor import functional as F
+from ..tensor import factory as init
 
 
 class BaseDataset:
@@ -27,10 +30,10 @@ class BaseDataset:
 
 class Dataset(BaseDataset):
     def __init__(self, x, y=None, transform=None, target_transform=None):
-        self.x = x if isinstance(x, Tensor) else Tensor(x)
+        self.x = x if isinstance(x, Tensor) else init.tensor(x)
         self.y = None
         if y is not None:
-            self.y = y if isinstance(y, Tensor) else Tensor(y)
+            self.y = y if isinstance(y, Tensor) else init.tensor(y)
             if len(self.x) != len(self.y):
                 raise ValueError(
                     f"x and y are in different size. len(x)={len(self.x)} != len(y)={len(self.y)}"
@@ -43,11 +46,11 @@ class Dataset(BaseDataset):
         y = self.y[idx] if self.y is not None else None
 
         if self.transform is not None:
-           #  x = self.transform(x)
-           x = self.transform(x.unsqueeze(axis=0))[0]
+
+            x = self.transform(x.unsqueeze(axis=0))[0]
         if y is not None and self.target_transform is not None:
-          #  y = self.target_transform(y)
-          y = self.target_transform(y.unsqueeze(axis=0))[0]
+
+            y = self.target_transform(y.unsqueeze(axis=0))[0]
 
         return (x, y) if y is not None else x
 

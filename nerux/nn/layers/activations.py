@@ -1,4 +1,4 @@
-
+from ...tensor import functional as F
 from .base import Base
 
 
@@ -9,12 +9,12 @@ class none(Base):
 
 class ReLU(Base):
     def forward(self, x):
-        return x.relu()
+        return F.relu(x)
 
 
 class Sigmoid(Base):
     def forward(self, x):
-        return x.sigmoid()
+        return F.sigmoid(x)
 
 
 class Tanh(Base):
@@ -24,7 +24,10 @@ class Tanh(Base):
 
 class Softmax(Base):
     def forward(self, x):
-        return x.softmax()
+        return F.softmax(x)
+class LogSoftmax(Base):
+    def forward(self, x):
+        return F.log_softmax(x)
 
 
 class LeakyReLU(Base):
@@ -33,7 +36,7 @@ class LeakyReLU(Base):
         self.alpha = alpha
 
     def forward(self, x):
-        return x.leakyrelu(alpha=self.alpha)
+        return F.leakyrelu(x, alpha=self.alpha)
 
 
 class ELU(Base):
@@ -42,9 +45,9 @@ class ELU(Base):
         self.alpha = alpha
 
     def forward(self, x):
-        return x.elu(alpha=self.alpha)
+        return F.elu(x, alpha=self.alpha)
 
 
 class Softplus(Base):
     def forward(self, x):
-        return x.softplus()
+        return F.softplus(x)

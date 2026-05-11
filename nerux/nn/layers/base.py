@@ -1,5 +1,7 @@
 from collections import OrderedDict
 from ...tensor import Tensor
+from ...tensor import functional as F
+from ...tensor import factory as init
 
 
 class Base:
@@ -41,7 +43,7 @@ class Base:
             if self._parameters.keys() != own.keys():
                 raise ValueError("Layer parameters Doesn't match given parameters key")
             for key, value in own.items():
-                tensor = Tensor.array(value, requires_grad=True)
+                tensor = init.tensor(value, requires_grad=True)
                 self._parameters[key] = tensor
                 setattr(self, key, tensor)
         subs = dic.get("subs", None)
@@ -66,11 +68,23 @@ class Base:
         return value
 
     def add_layer(self, name, layer):
-        if not isinstance(layer, type(self)):
-            raise ValueError("Sub layer must be an instance if Baae layer class")
+        if not isinstance(layer, Base):
+            raise ValueError("Sub layer must be an instance if Base layer class")
 
         self._sub_layers[name] = layer
         return layer
+
+
+    def __setattr__(self, name, value):
+        object.__setattr__(self, name, value)
+        if isinstance(value, Tensor):
+            if value.requires_grad:
+                self._parameters[name] = value
+    
+        elif isinstance(value, Base):
+            self._sub_layers[name] = value
+    
+
 
     def __call__(self, x, *args, **kwargs):
         if not self._built:
@@ -82,8 +96,7 @@ class Base:
         return self.forward(x, *args, **kwargs)
 
     def input(self, *in_shape):
-        
-        dummy_input = Tensor.zeros((1,) + tuple(in_shape))
+        dummy_input = init.zeros((1,) + tuple(in_shape))
         self(dummy_input)
         return self
 

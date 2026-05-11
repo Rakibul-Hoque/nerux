@@ -3,7 +3,6 @@ from ..data.dataloader import DataLoader
 from .evaluation import evaluation
 import pickle, os, json
 import numpy as np
-from ..tensor import Tensor
 
 
 class Model(Layer):
@@ -25,7 +24,7 @@ class Model(Layer):
         batch_size=16,
         shuffle=True,
         validation_data=None,
-        fall_back=None,
+        fall_back=None
     ):
         if not hasattr(self, "optimizer"):
             raise ValueError("model must be set with an optimizer ")

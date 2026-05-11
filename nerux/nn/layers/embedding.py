@@ -1,7 +1,9 @@
 from ..functional.embedding import EmbeddingFunction
 import numpy as np
-from ...tensor import Tensor
+
 from .base import Base
+from ...tensor import factory as init
+from ...tensor import Tensor
 
 
 class Embedding2(Base):
@@ -136,10 +138,10 @@ class Embedding(Base):
         max_norm=None,
     ):
         super().__init__()
-        self.vocab_size    = vocab_size
+        self.vocab_size = vocab_size
         self.embedding_dim = embedding_dim
-        self.padding_idx   = padding_idx
-        self.max_norm      = max_norm
+        self.padding_idx = padding_idx
+        self.max_norm = max_norm
 
         # Standard normal init — same as PyTorch default
         # Xavier is wrong here: embeddings are a lookup table, not a linear layer
@@ -149,19 +151,19 @@ class Embedding(Base):
             weight[padding_idx] = 0.0
 
         self.weight = self.add_parameter(
-            "weight", Tensor(weight, requires_grad=True)
+            "weight", init.tensor(weight, requires_grad=True)
         )
 
     def forward(self, indices):
         indices_np = indices.data if isinstance(indices, Tensor) else indices
-        indices_np = indices_np.astype(np.int32)   # ensure int before any check
+        indices_np = indices_np.astype(np.int32)  # ensure int before any check
 
         # Clamp out-of-range to UNK rather than crashing
         # (handles the dummy build tensor and any edge cases)
         indices_np = np.clip(indices_np, 0, self.vocab_size - 1)
 
         # Wrap back into a non-grad Tensor for Function.apply
-        indices_tensor = Tensor(indices_np.astype(np.float32), requires_grad=False)
+        indices_tensor = init.tensor(indices_np.astype(np.float32), requires_grad=False)
 
         embedded = EmbeddingFunction.apply(indices_tensor, self.weight)
 
@@ -170,9 +172,11 @@ class Embedding(Base):
 
         if self.padding_idx is not None:
             mask = (indices_np != self.padding_idx).astype(np.float32)
-            mask = Tensor(
-                np.expand_dims(mask, -1),   # (batch, seq, 1) — broadcasts over embedding_dim
-                requires_grad=False
+            mask = init.tensor(
+                np.expand_dims(
+                    mask, -1
+                ),  # (batch, seq, 1) — broadcasts over embedding_dim
+                requires_grad=False,
             )
             embedded = embedded * mask
 
@@ -189,6 +193,6 @@ class Embedding(Base):
             embeddings = embeddings.data
         vocab_size, embedding_dim = embeddings.shape
         layer = cls(vocab_size, embedding_dim, padding_idx=padding_idx)
-        layer.weight = Tensor(embeddings.copy(), requires_grad=not freeze)
+        layer.weight = init.tensor(embeddings.copy(), requires_grad=not freeze)
         layer._parameters["weight"] = layer.weight
         return layer

@@ -1,6 +1,7 @@
 import numpy as np
 from ..tensor import Tensor
-
+from ..tensor import functional as F
+from ..tensor import factory as init
 
 # ── Marker mixin ──────────────────────────────────────────────────────────────
 
@@ -60,7 +61,7 @@ class ToTensor:
     def __call__(self, x) -> Tensor:
         if isinstance(x, Tensor):
             return x
-        return Tensor(np.asarray(x))
+        return init.tensor(x)
 
     def __repr__(self):
         return "ToTensor()"
@@ -279,14 +280,14 @@ class OneHotEncoder:
             idx = data.flatten()  # (N,)
             out = np.zeros((len(idx), self.num_classes), dtype=np.float32)
             out[np.arange(len(idx)), idx] = 1.0
-            return Tensor(out)
+            return init.tensor(out)
 
         if self.dimension == 3:
             # (N, L) → (N, L, C)
             N, L = data.shape
             out = np.zeros((N, L, self.num_classes), dtype=np.float32)
             out[np.arange(N)[:, None], np.arange(L)[None, :], data] = 1.0
-            return Tensor(out)
+            return init.tensor(out)
 
         raise ValueError(f"OneHotEncoder: unsupported dimension={self.dimension}")
 
@@ -310,7 +311,7 @@ class RandomNoise(RandomTransform):
 
     def __call__(self, x: Tensor) -> Tensor:
         # Tensor.randn accepts a shape tuple — same shape as the whole batch
-        return x + Tensor.randn(x.shape) * self.std
+        return x + init.randn(x.shape) * self.std
 
     def __repr__(self):
         return f"RandomNoise(std={self.std})"
@@ -349,7 +350,7 @@ class RandomErasing(RandomTransform):
                     left = np.random.randint(0, W - ew)
                     data[n, ..., top : top + eh, left : left + ew] = self.value
                     break
-        return Tensor(data)
+        return init.tensor(data)
 
     def __repr__(self):
         return f"RandomErasing(p={self.p}, scale={self.scale})"
@@ -372,7 +373,7 @@ class RandomMixup(RandomTransform):
     def __call__(self, x: Tensor):
         lam = float(np.random.beta(self.alpha, self.alpha))
         idx = np.random.permutation(x.shape[0])
-        perm = Tensor(x.data[idx])  # shuffled copy
+        perm = init.tensor(x.data[idx])  # shuffled copy
         return x * lam + perm * (1 - lam), lam
 
     def __repr__(self):
@@ -404,7 +405,7 @@ class RandomCutout(RandomTransform):
                 rght = min(W, cx + self.length // 2)
                 data[n, ..., top:bot, left:rght] = self.fill_value
 
-        return Tensor(data)
+        return init.tensor(data)
 
     def __repr__(self):
         return f"RandomCutout(n_holes={self.n_holes}, length={self.length})"
@@ -426,7 +427,7 @@ class RandomHorizontalFlip(RandomTransform):
         data = x.data.copy()
         mask = np.random.rand(data.shape[0]) < self.p  # (N,) boolean
         data[mask] = data[mask, ..., ::-1].copy()
-        return Tensor(data)
+        return init.tensor(data)
 
     def __repr__(self):
         return f"RandomHorizontalFlip(p={self.p})"
@@ -445,7 +446,7 @@ class RandomVerticalFlip(RandomTransform):
         data = x.data.copy()
         mask = np.random.rand(data.shape[0]) < self.p
         data[mask] = data[mask, ..., ::-1, :].copy()
-        return Tensor(data)
+        return init.tensor(data)
 
     def __repr__(self):
         return f"RandomVerticalFlip(p={self.p})"
@@ -481,7 +482,7 @@ class RandomCrop(RandomTransform):
                 for n in range(N)
             ]
         )
-        return Tensor(out)
+        return init.tensor(out)
 
     def __repr__(self):
         return f"RandomCrop({self.crop_h}, {self.crop_w})"
@@ -531,7 +532,7 @@ class Pad:
         else:
             raise ValueError(f"Pad expects 3D or 4D batch, got {data.ndim}D")
 
-        return Tensor(np.pad(data, pad_width, constant_values=self.value))
+        return init.tensor(np.pad(data, pad_width, constant_values=self.value))
 
     def __repr__(self):
         return f"Pad(pad_h={self.pad_h}, pad_w={self.pad_w})"
@@ -552,7 +553,7 @@ class RandomRotation90(RandomTransform):
             if np.random.rand() < self.p:
                 k = np.random.randint(1, 4)  # 90, 180, or 270 degrees
                 data[n] = np.rot90(data[n], k=k, axes=(-2, -1)).copy()
-        return Tensor(data)
+        return init.tensor(data)
 
     def __repr__(self):
         return f"RandomRotation90(p={self.p})"
@@ -576,7 +577,7 @@ class TokenDropout(RandomTransform):
         data = x.data.copy()
         mask = np.random.rand(*data.shape) < self.p
         data[mask] = self.mask_token
-        return Tensor(data)
+        return init.tensor(data)
 
     def __repr__(self):
         return f"TokenDropout(p={self.p}, mask_token={self.mask_token})"
@@ -598,10 +599,10 @@ class TruncateOrPad:
         data = x.data
 
         if L >= self.max_len:
-            return Tensor(data[:, : self.max_len].copy())
+            return init.tensor(data[:, : self.max_len].copy())
 
         pad = np.full((N, self.max_len - L), self.pad_token, dtype=data.dtype)
-        return Tensor(np.concatenate([data, pad], axis=1))
+        return init.tensor(np.concatenate([data, pad], axis=1))
 
     def __repr__(self):
         return f"TruncateOrPad(max_len={self.max_len}, pad_token={self.pad_token})"
@@ -622,7 +623,7 @@ class DropFeatures:
 
     def __call__(self, x: Tensor) -> Tensor:
         # build a mask Tensor of ones, zero out selected columns
-        mask = Tensor(np.ones(x.shape, dtype=np.float32))
+        mask = init.ones(x.shape, dtype=np.float32)
         mask.data[:, self.indices] = 0.0
         return x * mask
 
@@ -662,7 +663,7 @@ class RandomFeatureDrop(RandomTransform):
         F = x.shape[1]
         mask = (np.random.rand(F) >= self.p).astype(np.float32)  # (F,)
         # broadcast (F,) over (N, F)
-        return x * Tensor(mask)
+        return x * init.tensor(mask)
 
     def __repr__(self):
         return f"RandomFeatureDrop(p={self.p})"

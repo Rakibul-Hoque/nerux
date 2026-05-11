@@ -1,6 +1,6 @@
 import numpy as np
-from ...tensor import Tensor
 from .base import Base
+from ...tensor import factory as init
 
 
 class BatchNorm2D(Base):
@@ -18,10 +18,10 @@ class BatchNorm2D(Base):
     def build(self, in_shape):
         # Learnable parameters
         self.gamma = self.add_parameter(
-            "gamma", Tensor(np.ones((self.num_features,)), requires_grad=True)
+            "gamma", init.tensor(np.ones((self.num_features,)), requires_grad=True)
         )
         self.beta = self.add_parameter(
-            "beta", Tensor(np.zeros((self.num_features,)), requires_grad=True)
+            "beta", init.tensor(np.zeros((self.num_features,)), requires_grad=True)
         )
 
         # Running statistics (not trainable)
@@ -52,10 +52,10 @@ class BatchNorm2D(Base):
             var = self.running_var
 
         # Normalize: reshape for broadcasting
-        mean_t = Tensor(mean.reshape(1, -1, 1, 1))
-        var_t = Tensor(var.reshape(1, -1, 1, 1))
+        mean_t = init.tensor(mean.reshape(1, -1, 1, 1))
+        var_t = init.tensor(var.reshape(1, -1, 1, 1))
 
-        x_normalized = (x - mean_t) / Tensor(np.sqrt(var_t.data + self.eps))
+        x_normalized = (x - mean_t) / init.tensor(np.sqrt(var_t.data + self.eps))
 
         # Scale and shift
         gamma = self.gamma.reshape(1, -1, 1, 1)

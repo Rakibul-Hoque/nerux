@@ -1,142 +1,206 @@
 import numpy as np
-from .operation.main_operations import Concat, Stack, Min, Max, Where
+from .tensor import Tensor
 
 
-class TensorFactory:
-    Tensor = None 
+def _normalize_shape(shape):
+    if len(shape) == 0:
+        return None
+    if len(shape) == 1 and isinstance(shape[0], (tuple, list)):
+        return tuple(shape[0])
 
-    # -------- Basic --------
-    @classmethod
-    def array(cls, arr, dtype=None, requires_grad=False):
-        return cls.Tensor(arr, dtype=dtype, requires_grad=requires_grad)
-
-    @classmethod
-    def tensor(cls, arr, dtype=None, requires_grad=False):
-        return cls.Tensor(arr, dtype=dtype, requires_grad=requires_grad)
-
-    @classmethod
-    def from_array(cls, arr, requires_grad=False):
-        data = arr.data if isinstance(arr, cls.Tensor) else arr
-        return cls.Tensor(np.array(data), requires_grad=requires_grad)
-
-    # -------- Zeros / Ones --------
-    @classmethod
-    def zeros(cls, shape, dtype=None, requires_grad=False):
-        return cls.Tensor(
-            np.zeros(shape, dtype=dtype or np.float32), requires_grad=requires_grad
-        )
-
-    @classmethod
-    def ones(cls, shape, dtype=None, requires_grad=False):
-        return cls.Tensor(
-            np.ones(shape, dtype=dtype or np.float32), requires_grad=requires_grad
-        )
-
-    @classmethod
-    def zeros_like(cls, x, requires_grad=False):
-        data = x.data if isinstance(x, cls.Tensor) else x
-        return cls.Tensor(np.zeros_like(data), requires_grad=requires_grad)
-
-    @classmethod
-    def ones_like(cls, x, requires_grad=False):
-        data = x.data if isinstance(x, cls.Tensor) else x
-        return cls.Tensor(np.ones_like(data), requires_grad=requires_grad)
-
-    # -------- Random --------
-    @classmethod
-    def randn(cls, shape, dtype=None, requires_grad=False):
-        return cls.Tensor(
-            np.random.randn(*shape).astype(dtype or np.float32),
-            requires_grad=requires_grad,
-        )
-
-    @classmethod
-    def rand(cls, shape, dtype=None, requires_grad=False):
-        return cls.Tensor(
-            np.random.rand(*shape).astype(dtype or np.float32),
-            requires_grad=requires_grad,
-        )
-
-    @classmethod
-    def randint(cls, low, high, shape, dtype=None, requires_grad=False):
-        return cls.Tensor(
-            np.random.randint(low, high, shape).astype(dtype or np.int32),
-            requires_grad=requires_grad,
-        )
-
-    @classmethod
-    def uniform(cls, low, high, shape, dtype=None, requires_grad=False):
-        return cls.Tensor(
-            np.random.uniform(low, high, shape).astype(dtype or np.float32),
-            requires_grad=requires_grad,
-        )
-
-    # -------- Structured --------
-    @classmethod
-    def arange(cls, start, end=None, step=1, dtype=None, requires_grad=False):
-        if end is None:
-            start, end = 0, start
-        return cls.Tensor(
-            np.arange(start, end, step, dtype=dtype or np.float32),
-            requires_grad=requires_grad,
-        )
-
-    @classmethod
-    def linspace(cls, start, end, steps, dtype=None, requires_grad=False):
-        return cls.Tensor(
-            np.linspace(start, end, steps, dtype=dtype or np.float32),
-            requires_grad=requires_grad,
-        )
-
-    @classmethod
-    def eye(cls, n, dtype=None, requires_grad=False):
-        return cls.Tensor(
-            np.eye(n, dtype=dtype or np.float32), requires_grad=requires_grad
-        )
-
-    @classmethod
-    def full(cls, shape, fill_value, dtype=None, requires_grad=False):
-        return cls.Tensor(
-            np.full(shape, fill_value, dtype=dtype or np.float32),
-            requires_grad=requires_grad,
-        )
-
-    @classmethod
-    def full_like(cls, x, fill_value, requires_grad=False):
-        data = x.data if isinstance(x, cls.Tensor) else x
-        return cls.Tensor(np.full_like(data, fill_value), requires_grad=requires_grad)
-
-    # -------- Combine --------
-    @classmethod
-    def concat(cls, tensors, axis=0):
-        return Concat.apply(*tensors, axis=axis)
-
-    @classmethod
-    def stack(cls, tensors, axis=0):
-        return Stack.apply(*tensors, axis=axis)
-
-    # -------- Elementwise --------
-    @classmethod
-    def where(cls, cond, x, y):
-        return Where.apply(x, y, cond=cond)
-
-    @classmethod
-    def minimum(cls, x, y):
-        return Min.apply(cls._ensure_tensor(x), cls._ensure_tensor(y))
-
-    @classmethod
-    def maximum(cls, x, y):
-        return Max.apply(cls._ensure_tensor(x), cls._ensure_tensor(y))
-
-    # -------- Utils --------
-    @classmethod
-    def seed(cls, seed):
-        np.random.seed(seed)
-
-    @classmethod
-    def _ensure_tensor(cls, x):
-        if isinstance(x, cls.Tensor):
-            return x
-        return cls.Tensor(x)
+    return tuple(shape)
 
 
+# Basic Creation
+
+
+def tensor(data, dtype=None, requires_grad=False):
+    return Tensor(data, dtype=dtype, requires_grad=requires_grad)
+
+
+def array(data, dtype=None, requires_grad=False):
+    return Tensor(data, dtype=dtype, requires_grad=requires_grad)
+
+
+def from_numpy(arr, requires_grad=False):
+    return Tensor(np.array(arr), requires_grad=requires_grad)
+
+
+# Constant Tensors
+
+
+def zeros(*shape, dtype=None, requires_grad=False):
+    shape = _normalize_shape(shape)
+    if shape is None:
+        data = np.zeros(())
+    else:
+        data = np.zeros(shape)
+    return Tensor(
+        data.astype(dtype or np.float32),
+        requires_grad=requires_grad,
+    )
+
+
+def ones(*shape, dtype=None, requires_grad=False):
+    shape = _normalize_shape(shape)
+    if shape is None:
+        data = np.ones(())
+    else:
+        data = np.ones(shape)
+    return Tensor(
+        data.astype(dtype or np.float32),
+        requires_grad=requires_grad,
+    )
+
+
+def full(*shape, fill_value, dtype=None, requires_grad=False):
+    shape = _normalize_shape(shape)
+    if shape is None:
+        data = np.full((), fill_value)
+    else:
+        data = np.full(shape, fill_value)
+    return Tensor(
+        data.astype(dtype or np.float32),
+        requires_grad=requires_grad,
+    )
+
+
+def eye(n, dtype=None, requires_grad=False):
+    return Tensor(np.eye(n, dtype=dtype or np.float32), requires_grad=requires_grad)
+
+
+# Like Creation
+
+
+def zeros_like(x, requires_grad=False):
+    return Tensor(np.zeros_like(x.data), requires_grad=requires_grad)
+
+
+def ones_like(x, requires_grad=False):
+    return Tensor(np.ones_like(x.data), requires_grad=requires_grad)
+
+
+def full_like(x, fill_value, requires_grad=False):
+    return Tensor(np.full_like(x.data, fill_value), requires_grad=requires_grad)
+
+
+# Random
+
+
+def rand(*shape, dtype=None, requires_grad=False):
+    shape = _normalize_shape(shape)
+    if shape is None:
+        data = np.random.rand()
+    else:
+        data = np.random.rand(*shape)
+    return Tensor(
+        np.array(data, dtype=dtype or np.float32),
+        requires_grad=requires_grad,
+    )
+
+
+def randn(*shape, dtype=None, requires_grad=False):
+    shape = _normalize_shape(shape)
+
+    if shape is None:
+        data = np.random.randn()
+    else:
+        data = np.random.randn(*shape)
+
+    return Tensor(
+        np.array(data, dtype=dtype or np.float32),
+        requires_grad=requires_grad,
+    )
+
+
+def randint(
+    low,
+    high=None,
+    shape=None,
+    dtype=None,
+    requires_grad=False,
+):
+    if high is None:
+        low, high = 0, low
+
+    if shape is not None:
+        if isinstance(shape, int):
+            shape = (shape,)
+        elif isinstance(shape, list):
+            shape = tuple(shape)
+    data = np.random.randint(low, high, size=shape)
+
+    return Tensor(
+        np.array(data, dtype=dtype or np.int32),
+        requires_grad=requires_grad,
+    )
+
+
+def uniform(
+    low=0.0,
+    high=1.0,
+    *shape,
+    dtype=None,
+    requires_grad=False,
+):
+    shape = _normalize_shape(shape)
+    data = np.random.uniform(low, high, size=shape)
+    return Tensor(
+        np.array(data, dtype=dtype or np.float32),
+        requires_grad=requires_grad,
+    )
+
+
+# Structured
+
+
+def arange(start, end=None, step=1, dtype=None, requires_grad=False):
+    if end is None:
+        start, end = 0, start
+
+    return Tensor(
+        np.arange(start, end, step, dtype=dtype or np.float32),
+        requires_grad=requires_grad,
+    )
+
+
+def linspace(start, end, steps, dtype=None, requires_grad=False):
+    return Tensor(
+        np.linspace(start, end, steps, dtype=dtype or np.float32),
+        requires_grad=requires_grad,
+    )
+
+
+# Meshgrid
+
+
+def meshgrid(*tensors, indexing="xy"):
+    tensors = [t.data if isinstance(t, Tensor) else t for t in tensors]
+
+    grids = np.meshgrid(*tensors, indexing=indexing)
+
+    return tuple(Tensor(g) for g in grids)
+
+
+# Triangle
+
+
+def tril(x, diagonal=0):
+    return Tensor(np.tril(x.data, k=diagonal))
+
+
+def triu(x, diagonal=0):
+    return Tensor(np.triu(x.data, k=diagonal))
+
+
+# Utils
+
+
+def seed(seed_value):
+    np.random.seed(seed_value)
+
+
+# Exports
+
+
+__all__ = [name for name in globals() if not name.startswith("_")]

@@ -1,5 +1,5 @@
 import numpy as np
-from ..tensor import Tensor
+from ..tensor import functional as F
 from ..data.dataloader import DataLoader
 
 
@@ -13,8 +13,8 @@ def evaluation(model, dataset, batch_size=128, threshold=0.5, top_k=5):
         predictions.append(pred)
         targets.append(yb)
 
-    y_pred = Tensor.concat(predictions, axis=0).data
-    y_true = Tensor.concat(targets, axis=0).data
+    y_pred = F.concat(predictions, axis=0).data
+    y_true = F.concat(targets, axis=0).data
 
     task = _detect_task(y_true)
 

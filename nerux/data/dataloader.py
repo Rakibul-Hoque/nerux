@@ -1,5 +1,7 @@
 import numpy as np
 from ..tensor import Tensor
+from ..tensor import functional as F
+from ..tensor import factory as init
 
 
 class SequentialSampler:
@@ -62,16 +64,15 @@ class WeightedRandomSampler:
 
 
 def default_collate(batch):
-
     if isinstance(batch[0], tuple):
         xs, ys = zip(*batch)
-        x_stack = Tensor(np.stack([x.data for x in xs], axis=0))
+        x_stack = F.stack([x for x in xs], axis=0)
         if ys[0] is None:
             return x_stack, None
-        y_stack = Tensor(np.stack([y.data for y in ys], axis=0))
+        y_stack = F.stack([y for y in ys], axis=0)
         return x_stack, y_stack
     else:
-        return Tensor(np.stack([x.data for x in batch], axis=0))
+        return F.stack([x for x in batch], axis=0)
 
 
 # ── DataLoader ───────────────────────────────────────────────────────────────

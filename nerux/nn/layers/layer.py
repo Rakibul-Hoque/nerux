@@ -6,7 +6,8 @@ class Layer(Base):
         super().__init__()
 
     def build(self, in_shape):
-        self._discover_sub_layers()
+        pass
+        #self._discover_sub_layers()
 
     def _discover_sub_layers(self):
         for attr_name in dir(self):
@@ -16,5 +17,5 @@ class Layer(Base):
                 attr = getattr(self, attr_name)
                 if isinstance(attr, Base):
                     self.add_layer(attr_name, attr)
-            except:
-                continue
+            except AttributeError:
+              continue

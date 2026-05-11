@@ -1,6 +1,7 @@
 import numpy as np
-from ...tensor import Tensor
 from .base import Base
+from ...tensor import Tensor
+from ...tensor import factory as init
 
 
 class PositionalEmbedding(Base):
@@ -20,7 +21,7 @@ class PositionalEmbedding(Base):
         >>> token_emb = Embedding(vocab_size=1000, embedding_dim=512)
         >>> pos_emb = PositionalEmbedding(max_len=100, embedding_dim=512)
         >>>
-        >>> indices = Tensor([[1, 4, 2, 8, 9]], requires_grad=False)
+        >>> indices = ([[1, 4, 2, 8, 9]], requires_grad=False)
         >>> x = token_emb(indices)  # (1, 5, 512)
         >>> x = pos_emb(x)  # Add positional information
     """
@@ -33,7 +34,7 @@ class PositionalEmbedding(Base):
         # Initialize positional embeddings
         pos_emb = np.random.randn(max_len, embedding_dim) * 0.02
         self.pos_embedding = self.add_parameter(
-            "pos_embedding", Tensor(pos_emb, requires_grad=True)
+            "pos_embedding", init.tensor(pos_emb, requires_grad=True)
         )
 
     def forward(self, x):
@@ -93,7 +94,7 @@ class SinusoidalPositionalEncoding(Base):
         pe[:, 1::2] = np.cos(position * div_term)
 
         # Store as non-trainable tensor
-        self.pe = Tensor(pe, requires_grad=False)
+        self.pe = init.tensor(pe, requires_grad=False)
 
     def forward(self, x):
         """Add fixed positional encoding to input"""

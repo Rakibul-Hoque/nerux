@@ -1,11 +1,11 @@
 import numpy as np
 from ...tensor import Tensor
+from ...tensor import functional as F
+from ...tensor import factory as init
+
 from .base import Base
 from .linear import Linear
 from .dropout import Dropout
-
-
-
 
 
 class MultiHeadAttention(Base):
@@ -13,17 +13,17 @@ class MultiHeadAttention(Base):
         super().__init__()
         assert d_model % num_heads == 0, "d_model must be divisible by num_heads"
 
-        self.d_model      = d_model
-        self.num_heads    = num_heads
-        self.d_k          = d_model // num_heads
+        self.d_model = d_model
+        self.num_heads = num_heads
+        self.d_k = d_model // num_heads
         self.dropout_rate = dropout
-        self.use_bias     = bias
+        self.use_bias = bias
 
         self.head_q_layers = []
         self.head_k_layers = []
         self.head_v_layers = []
-        self.W_o      = None
-        self.dropout  = None
+        self.W_o = None
+        self.dropout = None
 
     def build(self, in_shape):
         input_d_model = in_shape[-1]
@@ -43,7 +43,7 @@ class MultiHeadAttention(Base):
                 self.add_layer(f"head_v_{h}", Linear(self.d_k, bias=self.use_bias))
             )
 
-        self.W_o     = self.add_layer("W_o",     Linear(self.d_model, bias=self.use_bias))
+        self.W_o = self.add_layer("W_o", Linear(self.d_model, bias=self.use_bias))
         self.dropout = self.add_layer("dropout", Dropout(self.dropout_rate))
 
     def forward(self, Q, K=None, V=None, mask=None):
@@ -67,7 +67,7 @@ class MultiHeadAttention(Base):
             V_h = self.head_v_layers[h](V)
             head_outputs.append(self._attention(Q_h, K_h, V_h, norm_mask))
 
-        concat = Tensor.concat(head_outputs, axis=2)
+        concat = F.concat(head_outputs, axis=2)
         output = self.W_o(concat)
         output = self.dropout(output)
         return output
@@ -105,15 +105,15 @@ class MultiHeadAttention(Base):
         Q, K, V : (batch, seq, d_k)
         mask    : (batch, 1|seq_q, seq_k)  float  1=keep 0=mask  or None
         """
-        d_k    = Q.shape[-1]
-        K_T    = K.transpose(axes=(0, 2, 1))
-        scores = (Q @ K_T) * (1.0 / np.sqrt(d_k))   # avoid Tensor / scalar division
+        d_k = Q.shape[-1]
+        K_T = K.transpose(axes=(0, 2, 1))
+        scores = (Q @ K_T) * (1.0 / np.sqrt(d_k))  # avoid Tensor / scalar division
 
         if mask is not None:
             # Add large negative where mask == 0 so softmax → ~0
-            penalty = Tensor((1.0 - mask) * -1e9, requires_grad=False)
-            mask_t  = Tensor(mask, requires_grad=False)
-            scores  = scores * mask_t + penalty
+            penalty = init.tensor((1.0 - mask) * -1e9, requires_grad=False)
+            mask_t = init.tensor(mask, requires_grad=False)
+            scores = scores * mask_t + penalty
 
         attn_weights = scores.softmax()
         return attn_weights @ V

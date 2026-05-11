@@ -238,23 +238,3 @@ def reduce_grad(grad, shape):
 
     assert grad.shape == shape, f"reduce_grad shape mismatch: {grad.shape} vs {shape}"
     return grad
-
-
-class TensorView:
-    def __init__(self, data):
-        self.daat = data
-
-    def __iadd__(self, other):
-        raise RuntimeError("Use tensor.add_() instead of value +=")
-
-    def __isub__(self, other):
-        raise RuntimeError("Use tensor.sub_() instead")
-
-    def __imul__(self, other):
-        raise RuntimeError("Use tensor.mul_() instead")
-
-    def __itruediv__(self, other):
-        raise RuntimeError("Use tensor.div_() instead")
-
-    def __array__(self):
-        return self.data
