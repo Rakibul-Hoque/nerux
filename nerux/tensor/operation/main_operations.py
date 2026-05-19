@@ -382,29 +382,6 @@ class Min(Function):
         return gx, gy
 
 
-# class Min(Function):
-#     def forward(self, x, y):
-#         self.mask = x < y
-#         return np.where(self.mask, x, y)
-#
-#     def backward(self, grad_output):
-#         gx = grad_output * self.mask
-#         gy = grad_output * (~self.mask)
-#         return gx, gy
-#
-#
-# class Max(Function):
-#     def forward(self, x, y):
-#         self.mask = x > y
-#         return np.where(self.mask, x, y)
-#
-#     def backward(self, grad_output):
-#         gx = grad_output * self.mask
-#         gy = grad_output * (~self.mask)
-#         return gx, gy
-#
-
-
 class ReduceMin(Function):
     def __init__(self, x, axis=None):
         super().__init__(x)
@@ -443,36 +420,6 @@ class ReduceMax(Function):
         return grad_output * self.mask
 
 
-# class ReduceMin(Function):
-#     def __init__(self, x, axis=None):
-#         super().__init__(x)
-#         self.axis = axis
-#
-#     def forward(self, x):
-#         self.x = x
-#         self.min_val = x.min(axis=self.axis)
-##        store mask of argmin positions
-#         self.mask = x == self.min_val
-#         return self.min_val
-#
-#     def backward(self, grad_output):
-# &       grad_output is scalar → expand to mask
-#         return grad_output * self.mask
-#
-#
-# class ReduceMax(Function):
-#     def __init__(self, x, axis=None):
-#         super().__init__(x)
-#         self.axis = axis
-#
-#     def forward(self, x):
-#         self.x = x
-#         self.max_val = x.max(axis=self.axis)
-#         self.mask = x == self.max_val
-#         return self.max_val
-#
-#     def backward(self, grad_output):
-#         return grad_output * self.mask
 
 
 # ========== Shape Ops ==========

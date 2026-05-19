@@ -1,5 +1,5 @@
 from .global_grad import No_grad, Global_grad
-from .utils import export_graph as export_tensor_graph
+from .utils import export_graph as export_tensor_graph, make_grad as mkgrd
 from .checkpoint import Checkpoint
 
 
@@ -24,5 +24,6 @@ def checkpoint(fn, args):
         return Checkpoint.apply(fn, *args)
     return Checkpoint.apply(fn, args)
 
-
+def make_grad(func, argnums=None, value=None):
+    return mkgrd(func, argnums=argnums, value=value)
 __all__ = [name for name in globals() if not name.startswith("_")]

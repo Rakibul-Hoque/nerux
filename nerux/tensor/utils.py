@@ -25,10 +25,12 @@ def print_tensor(tensor):
         grad_data = np.asarray(tensor.grad.data)
         grad_str = np.array2string(grad_data, separator=", ")
         base += f", grad={grad_str}"
-    if tensor.requires_grad:
+    elif tensor.requires_grad:
         base += ", grad=True"
-    base += f", id=T{tensor._id})"
-
+    if tensor.grad is not None:
+        base += f", id=T{tensor._id})"
+    else :
+      base +=")"
     return base
 
 
@@ -165,9 +167,8 @@ def export_graph(tensor, file, as_image=False):
 
     dot_string = "\n".join(lines)
 
-    # ----------------------------
     # Save as DOT file
-    # ----------------------------
+
     if not as_image:
         if not file.endswith(".dot"):
             file = file + ".dot"
@@ -177,9 +178,7 @@ def export_graph(tensor, file, as_image=False):
 
         return file
 
-    # ----------------------------
     # Export as Image
-    # ----------------------------
 
     # Check Graphviz installation
     if shutil.which("dot") is None:
@@ -238,3 +237,26 @@ def reduce_grad(grad, shape):
 
     assert grad.shape == shape, f"reduce_grad shape mismatch: {grad.shape} vs {shape}"
     return grad
+
+
+def make_grad(func, argnums=None, value=False):
+    def grad_fn(*args):
+        _argnums = argnums
+        if not _argnums:
+            _argnums = range(len(args))
+        for i, input_tensor in enumerate(args):
+            if i in _argnums:
+                input_tensor.requires_grad_(True)
+        output = func(*args)
+        output.backward()
+        grads = [t.grad for t in args]
+        if len(grads) == 1:
+            grads = grads[0]
+        else:
+            grads = tuple(grads)
+
+        if value:
+            return grads, output
+        return grads
+
+    return grad_fn

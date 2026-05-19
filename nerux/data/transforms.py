@@ -660,8 +660,8 @@ class RandomFeatureDrop(RandomTransform):
         self.p = p
 
     def __call__(self, x: Tensor) -> Tensor:
-        F = x.shape[1]
-        mask = (np.random.rand(F) >= self.p).astype(np.float32)  # (F,)
+        f = x.shape[1]
+        mask = (np.random.rand(f) >= self.p).astype(np.float32)  # (F,)
         # broadcast (F,) over (N, F)
         return x * init.tensor(mask)
 
