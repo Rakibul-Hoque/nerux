@@ -6,7 +6,10 @@ from ...tensor import factory as init
 from ...tensor import Tensor
 
 
-class Embedding2(Base):
+
+
+
+class Embedding(Base):
     """
     Embedding layer that maps integer indices to dense vectors.
 
@@ -36,100 +39,6 @@ class Embedding2(Base):
         >>> embedded = embedding(indices)
     """
 
-    def __init__(
-        self,
-        vocab_size,
-        embedding_dim,
-        padding_idx=None,
-        max_norm=None,
-        scale_grad_by_freq=False,
-    ):
-        super().__init__()
-        self.vocab_size = vocab_size
-        self.embedding_dim = embedding_dim
-        self.padding_idx = padding_idx
-        self.max_norm = max_norm
-        self.scale_grad_by_freq = scale_grad_by_freq
-
-        # Initialize embeddings
-        # Using Xavier/Glorot uniform initialization
-        limit = np.sqrt(6.0 / (vocab_size + embedding_dim))
-        weight = np.random.uniform(-limit, limit, (vocab_size, embedding_dim))
-
-        # Set padding embedding to zero if specified
-        if padding_idx is not None:
-            weight[padding_idx] = 0
-
-        self.weight = self.add_parameter("weight", Tensor(weight, requires_grad=True))
-
-    def forward(self, indices):
-        """
-        Args:
-            indices: Tensor with integer indices, shape (*)
-
-        Returns:
-            embedded: Tensor with shape (*, embedding_dim)
-        """
-        # Convert Tensor to numpy for indexing
-        indices_np = indices.data if isinstance(indices, Tensor) else indices
-
-        # Bounds checking
-        if np.any(indices_np < 0) or np.any(indices_np >= self.vocab_size):
-            raise ValueError(
-                f"Index out of range. Expected indices in [0, {self.vocab_size - 1}]"
-            )
-
-        # Perform embedding lookup
-        embedded = EmbeddingFunction.apply(indices, self.weight)
-
-        # Apply max_norm if specified
-        if self.max_norm is not None:
-            embedded = self._apply_max_norm(embedded)
-
-        # Zero out padding embeddings if specified
-        if self.padding_idx is not None:
-            mask = indices_np == self.padding_idx
-            if np.any(mask):
-                # Create mask with proper shape for broadcasting
-                mask_expanded = np.expand_dims(mask, -1)
-                mask = Tensor((~mask_expanded).astype(np.float32), requires_grad=False)
-                embedded = embedded * mask
-        return embedded
-
-    def _apply_max_norm(self, embedded):
-        """Normalize embeddings to have at most max_norm L2 norm"""
-        norms = (embedded * embedded).sum(axis=-1, keepdims=True).sqrt()
-        scale = (self.max_norm / (norms + 1e-8)).clip(0, 1)
-        embedded = embedded * scale
-        return embedded
-
-    @classmethod
-    def from_pretrained(cls, embeddings, freeze=True, padding_idx=None):
-        """
-        Create embedding layer from pretrained embeddings.
-
-        Args:
-            embeddings: numpy array or Tensor of shape (vocab_size, embedding_dim)
-            freeze: If True, embeddings won't be updated during training
-            padding_idx: Optional padding index
-
-        Returns:
-            Embedding layer with pretrained weights
-        """
-        if isinstance(embeddings, Tensor):
-            embeddings = embeddings.data
-
-        vocab_size, embedding_dim = embeddings.shape
-        layer = cls(vocab_size, embedding_dim, padding_idx=padding_idx)
-
-        # Load pretrained embeddings
-        layer.weight = Tensor(embeddings.copy(), requires_grad=not freeze)
-        layer._parameters["weight"] = layer.weight
-
-        return layer
-
-
-class Embedding(Base):
     def __init__(
         self,
         vocab_size,
@@ -189,6 +98,17 @@ class Embedding(Base):
 
     @classmethod
     def from_pretrained(cls, embeddings, freeze=True, padding_idx=None):
+        """
+        Create embedding layer from pretrained embeddings.
+
+        Args:
+            embeddings: numpy array or Tensor of shape (vocab_size, embedding_dim)
+            freeze: If True, embeddings won't be updated during training
+            padding_idx: Optional padding index
+
+        Returns:
+            Embedding layer with pretrained weights
+        """
         if isinstance(embeddings, Tensor):
             embeddings = embeddings.data
         vocab_size, embedding_dim = embeddings.shape

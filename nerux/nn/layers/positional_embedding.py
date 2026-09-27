@@ -59,9 +59,6 @@ class PositionalEmbedding(Base):
         return x + pos_emb.reshape(1, seq_len, self.embedding_dim)
 
 
-# ============================================================================
-# SINUSOIDAL POSITIONAL ENCODING (Fixed, not learnable)
-# ============================================================================
 
 
 class SinusoidalPositionalEncoding(Base):
