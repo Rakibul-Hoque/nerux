@@ -19,101 +19,110 @@ class MultiHeadAttention(Base):
         self.dropout_rate = dropout
         self.use_bias = bias
 
-        self.head_q_layers = []
-        self.head_k_layers = []
-        self.head_v_layers = []
-        self.W_o = None
+        self.q_layer = None
+        self.k_layer = None
+        self.v_layer = None
+        self.W_o_layer = None
         self.dropout = None
 
     def build(self, in_shape):
         input_d_model = in_shape[-1]
         if input_d_model != self.d_model:
-            raise ValueError(
-                f"Input dimension {input_d_model} doesn't match d_model {self.d_model}"
-            )
+            raise ValueError(...)
 
-        for h in range(self.num_heads):
-            self.head_q_layers.append(
-                self.add_layer(f"head_q_{h}", Linear(self.d_k, bias=self.use_bias))
-            )
-            self.head_k_layers.append(
-                self.add_layer(f"head_k_{h}", Linear(self.d_k, bias=self.use_bias))
-            )
-            self.head_v_layers.append(
-                self.add_layer(f"head_v_{h}", Linear(self.d_k, bias=self.use_bias))
-            )
-
-        self.W_o = self.add_layer("W_o", Linear(self.d_model, bias=self.use_bias))
+        # One big projection per role — all d_model -> d_model
+        self.q_layer = self.add_layer(
+            "q_layer", Linear(self.d_model, bias=self.use_bias)
+        )
+        self.k_layer = self.add_layer(
+            "k_layer", Linear(self.d_model, bias=self.use_bias)
+        )
+        self.v_layer = self.add_layer(
+            "v_layer", Linear(self.d_model, bias=self.use_bias)
+        )
+        self.W_o_layer = self.add_layer(
+            "W_o_layer", Linear(self.d_model, bias=self.use_bias)
+        )
         self.dropout = self.add_layer("dropout", Dropout(self.dropout_rate))
 
     def forward(self, Q, K=None, V=None, mask=None):
         """
         Q, K, V : (batch, seq_len, d_model)
-        mask    : (batch, seq_len_k) or (batch, 1, seq_len_k)
-                  or (batch, seq_len_q, seq_len_k)   — 1 = keep, 0 = mask
+        mask    : (batch, seq_len_k) or
+                  (batch, 1, seq_len_k) or
+                  (batch, seq_len_q, seq_len_k) or
+                  (batch, heads, seq_len_q, seq_len_k
+                   — 1 = keep, 0 = mask
         Returns : (batch, seq_len_q, d_model)
         """
+
+        B, S, D = Q.shape
+
         K = Q if K is None else K
         V = Q if V is None else V
 
-        # Normalise mask to (batch, seq_len_q, seq_len_k) once,
-        # then reuse across all heads — no per-head slicing needed
-        norm_mask = self._normalise_mask(mask, Q)
+        # 1) Project to d_model (still 3D)
+        Q = self.q_layer(Q)  # (B, S, D)
+        K = self.k_layer(K)  # (B, S, D)
+        V = self.v_layer(V)  # (B, S, D)
 
-        head_outputs = []
-        for h in range(self.num_heads):
-            Q_h = self.head_q_layers[h](Q)
-            K_h = self.head_k_layers[h](K)
-            V_h = self.head_v_layers[h](V)
-            head_outputs.append(self._attention(Q_h, K_h, V_h, norm_mask))
+        H, d_k = self.num_heads, self.d_k
 
-        concat = F.concat(head_outputs, axis=2)
-        output = self.W_o(concat)
+        # 2) Split into heads: (B, S, D) -> (B, S, H, d_k) -> (B, H, S, d_k)
+        Q = Q.reshape(B, S, H, d_k).transpose(axes=(0, 2, 1, 3))
+        K = K.reshape(B, S, H, d_k).transpose(axes=(0, 2, 1, 3))
+        V = V.reshape(B, S, H, d_k).transpose(axes=(0, 2, 1, 3))
+
+        norm_mask = self._normalise_mask(mask)  # (B, 1, S_q, S_k) or None
+
+        # 3) Attention across all heads at once
+        H_out = self._attention(Q, K, V, norm_mask)  # (B, H, S_q, d_k)
+
+        # 4) Merge heads: (B, H, S, d_k) -> (B, S, H, d_k) -> (B, S, D)
+        H_out = H_out.transpose(axes=(0, 2, 1, 3)).reshape(B, S, D)
+
+        # 5) Output mixing + dropout
+        output = self.W_o_layer(H_out)
         output = self.dropout(output)
         return output
 
-    # ── helpers ──────────────────────────────────────────────────────────────
-
-    def _normalise_mask(self, mask, Q):
+    def _normalise_mask(self, mask):
         """
-        Accept masks in any of these shapes and return (batch, seq_q, seq_k):
-          - None
-          - (batch, seq_k)                  → broadcast over seq_q
-          - (batch, 1, seq_k)               → broadcast over seq_q
-          - (batch, seq_q, seq_k)           → use as-is
-          - (batch, num_heads, seq_q, seq_k)→ average over heads (all heads
-                                              should be identical in practice)
+        Returns a mask shaped to broadcast against scores (B, H, S_q, S_k):
+          - None                            → None
+          - (B, S_k)                        → (B, 1, 1, S_k)
+          - (B, 1, S_k)                     → (B, 1, 1, S_k)
+          - (B, S_q, S_k)                   → (B, 1, S_q, S_k)
+          - (B, H, S_q, S_k)                → (B, H, S_q, S_k)   (as-is)
         """
         if mask is None:
             return None
 
         m = mask.data if isinstance(mask, Tensor) else np.array(mask, dtype=float)
 
-        if m.ndim == 2:
-            # (batch, seq_k) → (batch, 1, seq_k)
-            m = m[:, np.newaxis, :]
-        elif m.ndim == 4:
-            # (batch, heads, seq_q, seq_k) → take first head
-            # (all heads carry the same padding mask)
-            m = m[:, 0, :, :]
-        # now m is (batch, 1|seq_q, seq_k) — fine for broadcasting in _attention
+        if m.ndim == 2:  # (B, S_k)
+            m = m[:, np.newaxis, np.newaxis, :]  # (B, 1, 1, S_k)
+        elif m.ndim == 3:  # (B, S_q, S_k)  or (B, 1, S_k)
+            m = m[:, np.newaxis, :, :]  # (B, 1, S_q|1, S_k)
+        # ndim == 4: leave as (B, H, S_q, S_k)
         return m.astype(float)
 
     def _attention(self, Q, K, V, mask=None):
         """
-        Scaled dot-product attention.
-        Q, K, V : (batch, seq, d_k)
-        mask    : (batch, 1|seq_q, seq_k)  float  1=keep 0=mask  or None
+        Q, K, V : (B, H, S, d_k)
+        mask    : broadcastable to (B, H, S_q, S_k), 1=keep 0=mask  or None
+        Returns : (B, H, S_q, d_k)
         """
-        d_k = Q.shape[-1]
-        K_T = K.transpose(axes=(0, 2, 1))
-        scores = (Q @ K_T) * (1.0 / np.sqrt(d_k))  # avoid Tensor / scalar division
+
+
+        # (B, H, S, d_k) @ (B, H, d_k, S) -> (B, H, S, S)
+        K_T = K.transpose(axes=(0, 1, 3, 2))
+        scores = (Q @ K_T) * (1.0 / np.sqrt(self.d_k))
 
         if mask is not None:
-            # Add large negative where mask == 0 so softmax → ~0
-            penalty = init.tensor((1.0 - mask) * -1e9, requires_grad=False)
             mask_t = init.tensor(mask, requires_grad=False)
+            penalty = init.tensor((1.0 - mask) * -1e9, requires_grad=False)
             scores = scores * mask_t + penalty
 
-        attn_weights = scores.softmax()
-        return attn_weights @ V
+        attn = scores.softmax()  # softmax over last axis (S_k)
+        return attn @ V  # (B, H, S_q, d_k)
