@@ -43,9 +43,14 @@ class Base:
             if self._parameters.keys() != own.keys():
                 raise ValueError("Layer parameters Doesn't match given parameters key")
             for key, value in own.items():
-                tensor = init.tensor(value, requires_grad=True)
-                self._parameters[key] = tensor
-                setattr(self, key, tensor)
+                param = init.tensor(value, requires_grad=True)
+                if self._parameters[key].shape != param.shape:
+                    raise ValueError(
+                        f"Parameter shape Doesn't match given shape. Cannot fit shape {self._parameters[key].shape} to {param.shape}"
+                    )
+
+                self._parameters[key] = param
+                setattr(self, key, param)
         subs = dic.get("subs", None)
         if subs:
             if self._sub_layers.keys() != subs.keys():
@@ -73,18 +78,6 @@ class Base:
 
         self._sub_layers[name] = layer
         return layer
-
-
-    def __setattr__(self, name, value):
-        object.__setattr__(self, name, value)
-        if isinstance(value, Tensor):
-            if value.requires_grad:
-                self._parameters[name] = value
-    
-        elif isinstance(value, Base):
-            self._sub_layers[name] = value
-    
-
 
     def __call__(self, x, *args, **kwargs):
         if not self._built:

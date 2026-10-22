@@ -1,13 +1,6 @@
 import numpy as np
 from ..function import Function
-from ..utils import reduce_grad
-
-
-def ensure_array(data, dtype=None):
-    if isinstance(data, np.ndarray):
-        return data.astype(dtype) if dtype else data
-
-    return np.array(data, dtype=dtype if dtype else np.float32)
+from .utils import reduce_grad, ensure_array
 
 
 # ========== Basic Math Ops ==========
@@ -418,8 +411,6 @@ class ReduceMax(Function):
         if self.axis is not None:
             grad_output = np.expand_dims(grad_output, axis=self.axis)
         return grad_output * self.mask
-
-
 
 
 # ========== Shape Ops ==========

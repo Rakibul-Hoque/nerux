@@ -1,10 +1,16 @@
 from ...tensor import factory as init
 from .base import Base
+from ..functional._nd import normalize_tuple
 from ..functional.conv2d import Conv2DFunction
 import numpy as np
 
 
 class Conv2D(Base):
+    """
+    Input:  (N, C_in, H, W)
+    Output: (N, C_out, ...)
+    """
+
     def __init__(
         self,
         out_channels,
@@ -16,23 +22,20 @@ class Conv2D(Base):
     ):
         super().__init__()
         self.out_channels = out_channels
-
-      
-        self.kernel_size = (
-            (kernel_size, kernel_size)
-            if isinstance(kernel_size, int)
-            else tuple(kernel_size)
-        )
-        self.stride = (stride, stride) if isinstance(stride, int) else tuple(stride)
+        self.kernel_size = normalize_tuple(kernel_size, 2, "kernel_size")
+        self.stride = normalize_tuple(stride, 2, "stride")
         self.padding = padding
         self.padding_mode = padding_mode
         self.use_bias = bias
 
     def build(self, in_shape):
+        if len(in_shape) != 2 + 1:
+            raise ValueError(
+                f"Conv2D expects input shape (C, H, W), got {tuple(in_shape)}"
+            )
         C_in = in_shape[0]
-        KH, KW = self.kernel_size
-        scale = np.sqrt(2.0 / (C_in * KH * KW))
-        W = np.random.randn(self.out_channels, C_in, KH, KW) * scale
+        scale = np.sqrt(2.0 / (C_in * int(np.prod(self.kernel_size))))
+        W = np.random.randn(self.out_channels, C_in, *self.kernel_size) * scale
         self.W = self.add_parameter("W", init.tensor(W, requires_grad=True))
         if self.use_bias:
             self.B = self.add_parameter(
@@ -51,5 +54,3 @@ class Conv2D(Base):
             padding=self.padding,
             padding_mode=self.padding_mode,
         )
-
-

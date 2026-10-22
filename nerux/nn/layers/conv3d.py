@@ -8,7 +8,7 @@ import numpy as np
 class Conv3D(Base):
     """
     Input:  (N, C_in, D, H, W)
-    Output: (N, C_out, ...) -- spatial dims depend on kernel/stride/padding
+    Output: (N, C_out, ...)
     """
 
     def __init__(
@@ -29,6 +29,10 @@ class Conv3D(Base):
         self.use_bias = bias
 
     def build(self, in_shape):
+        if len(in_shape) != 3 + 1:
+            raise ValueError(
+                f"Conv3D expects input shape (C, D, H, W), got {tuple(in_shape)}"
+            )
         C_in = in_shape[0]
         scale = np.sqrt(2.0 / (C_in * int(np.prod(self.kernel_size))))
         W = np.random.randn(self.out_channels, C_in, *self.kernel_size) * scale

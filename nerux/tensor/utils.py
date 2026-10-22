@@ -29,8 +29,8 @@ def print_tensor(tensor):
         base += ", grad=True"
     if tensor.grad is not None:
         base += f", id=T{tensor._id})"
-    else :
-      base +=")"
+    else:
+        base += ")"
     return base
 
 
@@ -222,34 +222,30 @@ def _format_time(seconds):
         return f"{seconds * 1e9:.1f} ns"
 
 
-def reduce_grad(grad, shape):
-    # Strip extra leading dims
-    while grad.ndim > len(shape):
-        grad = grad.sum(axis=0)
-
-    # Sum over broadcasted dims (shape had size 1, grad may have size > 1)
-    axes = tuple(i for i, dim in enumerate(shape) if dim == 1 and grad.shape[i] != 1)
-    if axes:
-        grad = grad.sum(axis=axes, keepdims=True)
-
-    if shape == ():
-        grad = grad.sum()
-
-    assert grad.shape == shape, f"reduce_grad shape mismatch: {grad.shape} vs {shape}"
-    return grad
-
-
 def make_grad(func, argnums=None, value=False):
     def grad_fn(*args):
         _argnums = argnums
         if not _argnums:
-            _argnums = range(len(args))
+            _argnums = list(range(len(args)))
+
+        assert len(args) > max(_argnums), (
+            f"return grad indexes {_argnums} but {len(args)} argument(s) provided cannot access argument indexed {max(_argnums)}"
+        )
+
         for i, input_tensor in enumerate(args):
             if i in _argnums:
                 input_tensor.requires_grad_(True)
+
         output = func(*args)
         output.backward()
-        grads = [t.grad for t in args]
+
+        grads = []
+        for i in _argnums:
+            for j, t in enumerate(args):
+                if i == j:
+                    grads.append(t.grad.copy()) 
+                    t.zero_grad()
+
         if len(grads) == 1:
             grads = grads[0]
         else:
