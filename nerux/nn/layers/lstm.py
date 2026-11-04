@@ -1,10 +1,8 @@
-# nerux/nn/layers/lstm.py
-
 import numpy as np
 from ...tensor import Tensor
 from ...tensor import functional as F
 from ...tensor import factory as init
-
+from ..parameter import Parameter
 from .base import Base
 from .dropout import Dropout
 from ..functional.lstm import LSTMCellFunction
@@ -86,20 +84,20 @@ class LSTM(Base):
         h_input_size = self.proj_size if self.proj_size > 0 else H
 
         W_ih = np.random.uniform(-scale, scale, (4 * H, input_size))
-        W_hh = np.random.uniform(-scale, scale, (4 * H, h_input_size))  
+        W_hh = np.random.uniform(-scale, scale, (4 * H, h_input_size))
 
         b_ih = np.zeros(4 * H)
         b_ih[H : 2 * H] = 1.0
         b_hh = np.zeros(4 * H)
 
-        self.add_parameter(f"W_ih_{label}", init.tensor(W_ih, requires_grad=True))
-        self.add_parameter(f"W_hh_{label}", init.tensor(W_hh, requires_grad=True))
+        self.add_parameter(f"W_ih_{label}", Parameter(W_ih))
+        self.add_parameter(f"W_hh_{label}", Parameter(W_hh))
 
         keys = {"W_ih": f"W_ih_{label}", "W_hh": f"W_hh_{label}"}
 
         if self.use_bias:
-            self.add_parameter(f"b_ih_{label}", init.tensor(b_ih, requires_grad=True))
-            self.add_parameter(f"b_hh_{label}", init.tensor(b_hh, requires_grad=True))
+            self.add_parameter(f"b_ih_{label}", Parameter(b_ih))
+            self.add_parameter(f"b_hh_{label}", Parameter(b_hh))
             keys["b_ih"] = f"b_ih_{label}"
             keys["b_hh"] = f"b_hh_{label}"
 
@@ -107,7 +105,7 @@ class LSTM(Base):
             # W_hr projects hidden_size → proj_size: (proj_size, hidden_size)
             scale_p = 1.0 / np.sqrt(H)
             W_hr = np.random.uniform(-scale_p, scale_p, (self.proj_size, H))
-            self.add_parameter(f"W_hr_{label}", init.tensor(W_hr, requires_grad=True))
+            self.add_parameter(f"W_hr_{label}", Parameter(W_hr))
             keys["W_hr"] = f"W_hr_{label}"
 
         self._cell_keys[(layer, direction)] = keys

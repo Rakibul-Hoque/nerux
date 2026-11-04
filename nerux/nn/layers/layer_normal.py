@@ -1,7 +1,7 @@
 import numpy as np
 from ...tensor import Tensor
 from .base import Base
-from ...tensor import factory as init
+from ..parameter import Parameter
 
 
 class LayerNorm(Base):
@@ -23,8 +23,8 @@ class LayerNorm(Base):
         gamma = np.ones(self.normalized_shape, dtype=np.float32)
         beta = np.zeros(self.normalized_shape, dtype=np.float32)
 
-        self.gamma = self.add_parameter("gamma", init.tensor(gamma, requires_grad=True))
-        self.beta = self.add_parameter("beta", init.tensor(beta, requires_grad=True))
+        self.gamma = self.add_parameter("gamma", Parameter(gamma))
+        self.beta = self.add_parameter("beta", Parameter(beta))
 
     def forward(self, x: Tensor):
         reduce_ndims = len(self.normalized_shape)

@@ -4,18 +4,6 @@ import shutil
 import subprocess
 
 
-class Tid_count:
-    global_tid_count = 0
-
-    @classmethod
-    def get_current(cls):
-        return cls.global_tid_count
-
-    @classmethod
-    def get_incremented(cls):
-        cls.global_tid_count += 1
-        return cls.global_tid_count
-
 
 def print_tensor(tensor):
     data_str = np.array2string(np.asarray(tensor.data), separator=", ")
@@ -222,37 +210,16 @@ def _format_time(seconds):
         return f"{seconds * 1e9:.1f} ns"
 
 
-def make_grad(func, argnums=None, value=False):
-    def grad_fn(*args):
-        _argnums = argnums
-        if not _argnums:
-            _argnums = list(range(len(args)))
+def format_bytes(size_bytes: int | float) -> str:
+    if size_bytes == 0:
+        return "0 B"
 
-        assert len(args) > max(_argnums), (
-            f"return grad indexes {_argnums} but {len(args)} argument(s) provided cannot access argument indexed {max(_argnums)}"
-        )
+    units = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+    i = 0
+    while size_bytes >= 1024 and i < len(units) - 1:
+        size_bytes /= 1024.0
+        i += 1
 
-        for i, input_tensor in enumerate(args):
-            if i in _argnums:
-                input_tensor.requires_grad_(True)
+    return f"{size_bytes:.2f} {units[i]}"
 
-        output = func(*args)
-        output.backward()
 
-        grads = []
-        for i in _argnums:
-            for j, t in enumerate(args):
-                if i == j:
-                    grads.append(t.grad.copy()) 
-                    t.zero_grad()
-
-        if len(grads) == 1:
-            grads = grads[0]
-        else:
-            grads = tuple(grads)
-
-        if value:
-            return grads, output
-        return grads
-
-    return grad_fn

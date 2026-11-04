@@ -27,11 +27,12 @@ def _apply_transform(transform, value):
         return value
 
     if isinstance(transform, (list, tuple)):
+        value = value.unsqueeze(axis=0)
         for fn in transform:
             value = fn(value)
-        return value
+        return value[0]
 
-    return transform(value)
+    return transform(value.unsqueeze (axis=0))[0]
 
 
 # BaseDataset

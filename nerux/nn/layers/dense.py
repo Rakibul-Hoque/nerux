@@ -1,5 +1,5 @@
 import numpy as np
-from ...tensor import factory as init
+from ..parameter import Parameter
 from .base import Base
 from . import none, ReLU, LeakyReLU, ELU
 
@@ -18,9 +18,9 @@ class Dense(Base):
         else:
             std = np.sqrt(2.0 / (self.in_features + self.out_features))
         W = rng.normal(0, std, (self.out_features, self.in_features))
-        self.W = self.add_parameter("W", init.tensor(W, requires_grad=True))
+        self.add_parameter("W", Parameter(W))
         B = np.zeros((self.out_features,))
-        self.B = self.add_parameter("B", init.tensor(B, requires_grad=True))
+        self.add_parameter("B", Parameter(B))
 
     def forward(self, x):
         return self.activation((x @ self.W.T) + self.B)

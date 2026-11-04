@@ -450,6 +450,12 @@ def setitem(x, idx, value):
     return SetItem.apply(ensure_tensor(x), ensure_tensor(value), idx=idx)
 
 
+# others
+
+
+def dtype(st):
+    return np.dtype(st)
+
 
 # Exports
 

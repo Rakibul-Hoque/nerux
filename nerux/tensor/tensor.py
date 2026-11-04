@@ -2,10 +2,12 @@ import numpy as np
 import time
 
 from .engine import run_backward
+
 from .global_grad import No_grad, Global_grad
 
-from .utils import (
-    Tid_count,
+from .utils.tid_count import Tid_count
+
+from .utils.utils import (
     print_tensor,
     get_graph,
     _format_time,
@@ -18,13 +20,13 @@ from . import functional as F
 
 def _ensure_numpy(data, dt=None):
     if isinstance(data, Tensor):
-        return data.data.astype(dt) if dt else data.data
+        return data.data.astype(dt or data.dtype) if dt else data.data
 
     if isinstance(data, memoryview):
         data = np.array(data)
 
     if not isinstance(data, np.ndarray):
-        return np.array(data, dtype=dt or np.float32)
+        return np.array(data, dtype=dt or np.float64)
 
     return data.astype(dt) if dt else data
 
@@ -43,13 +45,7 @@ class Tensor:
 
     # Init
 
-    def __init__(
-        self,
-        data,
-        dtype=None,
-        requires_grad=False,
-        creator=None
-    ):
+    def __init__(self, data, dtype=None, requires_grad=False, creator=None):
         self.data = _ensure_numpy(data, dtype)
 
         self.requires_grad = requires_grad
@@ -99,6 +95,9 @@ class Tensor:
     @property
     def ndim(self):
         return self.data.ndim
+    @property
+    def size(self):
+        return self.data.size
 
     @property
     def dtype(self):
@@ -124,6 +123,16 @@ class Tensor:
 
     def to_numpy(self):
         return self.data.copy()
+
+    def to_parameter(self, requires_grad=True):
+        from ..nn import to_parameter
+
+        return to_parameter(self, requires_grad)
+
+    def save(self, path):
+        from .util.serialization import save
+
+        return save(self, path)
 
     def tolist(self):
         return self.data.copy().tolist()

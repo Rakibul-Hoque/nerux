@@ -26,3 +26,7 @@ class Parameter(Tensor):
             f"dtype={self.dtype}, "
             f"requires_grad={self.requires_grad})"
         )
+
+
+def to_parameter(t: Tensor, requires_grad) -> Parameter:
+    return Parameter.from_tensor(t, requires_grad)

@@ -1,12 +1,9 @@
 from ..functional.embedding import EmbeddingFunction
 import numpy as np
-
+from ..parameter import Parameter
 from .base import Base
 from ...tensor import factory as init
 from ...tensor import Tensor
-
-
-
 
 
 class Embedding(Base):
@@ -59,9 +56,7 @@ class Embedding(Base):
         if padding_idx is not None:
             weight[padding_idx] = 0.0
 
-        self.weight = self.add_parameter(
-            "weight", init.tensor(weight, requires_grad=True)
-        )
+        self.weight = self.add_parameter("weight", Parameter(weight))
 
     def forward(self, indices):
         indices_np = indices.data if isinstance(indices, Tensor) else indices
@@ -113,6 +108,6 @@ class Embedding(Base):
             embeddings = embeddings.data
         vocab_size, embedding_dim = embeddings.shape
         layer = cls(vocab_size, embedding_dim, padding_idx=padding_idx)
-        layer.weight = init.tensor(embeddings.copy(), requires_grad=not freeze)
+        layer.weight = Parameter(embeddings.copy(), requires_grad=not freeze)
         layer._parameters["weight"] = layer.weight
         return layer

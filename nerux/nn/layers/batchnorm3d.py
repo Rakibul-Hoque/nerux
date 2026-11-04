@@ -1,6 +1,6 @@
 import numpy as np
 from .base import Base
-from ...tensor import factory as init
+from ..parameter import Parameter
 from ..functional.batchnorm import BatchNormFunction
 
 
@@ -21,11 +21,12 @@ class BatchNorm3D(Base):
 
     def build(self, in_shape):
         self.gamma = self.add_parameter(
-            "gamma", init.tensor(np.ones((self.num_features,)), requires_grad=True)
+            "gamma", Parameter(np.ones((self.num_features,)))
         )
         self.beta = self.add_parameter(
-            "beta", init.tensor(np.zeros((self.num_features,)), requires_grad=True)
+            "beta", Parameter(np.zeros((self.num_features,)))
         )
+
 
         # Running statistics (not trainable); updated in place by the function
         self.running_mean = np.zeros((self.num_features,))

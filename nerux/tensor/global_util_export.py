@@ -1,6 +1,15 @@
-from .global_grad import No_grad, Global_grad
-from .utils import export_graph as export_tensor_graph, make_grad as mkgrd
 from .checkpoint import Checkpoint
+from .global_grad import No_grad, Global_grad
+from .utils.utils import export_graph as export_tensor_graph
+from .utils.grad_fn import make_grad
+from .utils.serialization import (
+    encode_tensor,
+    decode_tensor,
+    load_dict,
+    save_dict,
+    save,
+    load,
+)
 
 
 def stop_global_grad():
@@ -24,6 +33,5 @@ def checkpoint(fn, args):
         return Checkpoint.apply(fn, *args)
     return Checkpoint.apply(fn, args)
 
-def make_grad(func, argnums=None, value=None):
-    return mkgrd(func, argnums=argnums, value=value)
+
 __all__ = [name for name in globals() if not name.startswith("_")]

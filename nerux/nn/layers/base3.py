@@ -1,0 +1,115 @@
+from collections import OrderedDict
+from ...tensor import Tensor
+from ...tensor import functional as F
+from ...tensor import factory as init
+from ..parameter import Parameter
+
+
+class Base:
+    def __init__(self):
+        self.training = True
+        self._built = False
+        self._input_shape = None
+        self._parameters = OrderedDict()
+        self._sub_layers = OrderedDict()
+
+    def parameters(self):
+        if not self._built:
+            raise ValueError(
+                "You must set an input shape e.g. 'model.input(10,50)' or call the model  e.g. 'model(x)' to initialize the parameters "
+            )
+        params = list(self._parameters.values())
+        for layer in self._sub_layers.values():
+            params.extend(layer.parameters())
+        return params
+
+    def parameters_dict(self):
+        own = {
+            name: value.tolist() if isinstance(value, Tensor) else value
+            for name, value in self._parameters.items()
+        }
+
+        subs = {
+            name: layer.parameters_dict() for name, layer in self._sub_layers.items()
+        }
+        dic = {}
+        if self._parameters:
+            dic["self"] = own
+        if self._sub_layers:
+            dic["subs"] = subs
+        return dic
+
+    def get_parameters_dict_proto(self, layerList):
+        parameters = {
+            name: value.tolist() if isinstance(value, Tensor) else value
+            for name, value in self._parameters.items()
+        }
+
+        sub_layers = {
+            name: layer.get_parameters_dict()
+            for name, layer in self._sub_layers.items()
+        }
+
+        layerList.append({"parameters": parameters, "sub_layers": sub_layers})
+
+        return len(layerList) - 1
+
+    def set_parameters(self, dic):
+        own = dic.get("self", None)
+        if own:
+            if self._parameters.keys() != own.keys():
+                raise ValueError("Layer parameters Doesn't match given parameters key")
+            for key, value in own.items():
+                param = init.tensor(value, requires_grad=True)
+                if self._parameters[key].shape != param.shape:
+                    raise ValueError(
+                        f"Parameter shape Doesn't match given shape. Cannot fit shape {self._parameters[key].shape} to {param.shape}"
+                    )
+
+                self._parameters[key] = param
+                setattr(self, key, param)
+        subs = dic.get("subs", None)
+        if subs:
+            if self._sub_layers.keys() != subs.keys():
+                raise ValueError(
+                    "sub layer Doesn't match given sub layers in parameters"
+                )
+            for name, layer in self._sub_layers.items():
+                layer.set_parameters(subs[name])
+
+    def add_parameter(self, name, value):
+        if not isinstance(value, Parameter):
+            raise ValueError("Parameter must an instance of  Parameter object")
+        self._parameters[name] = value
+        setattr(self, name, value)
+        return value
+
+    def add_layer(self, name, layer):
+        if not isinstance(layer, Base):
+            raise ValueError("Sub layer must be an instance if Base layer class")
+        self._sub_layers[name] = layer
+        setattr(self, name, layer)
+        return layer
+
+    def set_training(self, value):
+        self.training = value
+        for layer in self._sub_layers.values():
+            layer.set_training(value)
+
+    def __call__(self, x, *args, **kwargs):
+        if not self._built:
+            if hasattr(self, "build"):
+                input_shape = x.shape[1:]
+                self.build(input_shape)
+            self._built = True
+
+        return self.forward(x, *args, **kwargs)
+
+    def input(self, *in_shape):
+        self._input_shape = in_shape
+        dummy_input = init.zeros((1,) + tuple(in_shape))
+        self(dummy_input)
+        return self
+
+    def forward(self, *args, **kwargs):
+        raise NotImplementedError("forward() must be implemented in subclass")

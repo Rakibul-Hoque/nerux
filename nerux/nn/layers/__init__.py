@@ -1,4 +1,4 @@
-# tensor/nn/layers/__init__.py
+
 from .base import Base
 from .layer import Layer
 from .activations import ReLU, Sigmoid, Tanh, Softmax, LeakyReLU, Softplus, ELU, none

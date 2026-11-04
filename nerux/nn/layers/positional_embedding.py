@@ -2,7 +2,7 @@ import numpy as np
 from .base import Base
 from ...tensor import Tensor
 from ...tensor import factory as init
-
+from ..parameter import Parameter
 
 class PositionalEmbedding(Base):
     """
@@ -34,7 +34,7 @@ class PositionalEmbedding(Base):
         # Initialize positional embeddings
         pos_emb = np.random.randn(max_len, embedding_dim) * 0.02
         self.pos_embedding = self.add_parameter(
-            "pos_embedding", init.tensor(pos_emb, requires_grad=True)
+            "pos_embedding",  Parameter(pos_emb)
         )
 
     def forward(self, x):

@@ -1,3 +1,4 @@
+from ..parameter import Parameter
 from ...tensor import factory as init
 from .base import Base
 from ..functional._nd import normalize_tuple
@@ -36,11 +37,9 @@ class Conv2D(Base):
         C_in = in_shape[0]
         scale = np.sqrt(2.0 / (C_in * int(np.prod(self.kernel_size))))
         W = np.random.randn(self.out_channels, C_in, *self.kernel_size) * scale
-        self.W = self.add_parameter("W", init.tensor(W, requires_grad=True))
+        self.W = self.add_parameter("W", Parameter(W))
         if self.use_bias:
-            self.B = self.add_parameter(
-                "B", init.tensor(np.zeros((self.out_channels,)), requires_grad=True)
-            )
+            self.B = self.add_parameter("B", Parameter(np.zeros((self.out_channels,))))
         else:
             self.B = None
 

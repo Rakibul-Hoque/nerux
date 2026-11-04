@@ -1,5 +1,5 @@
 import numpy as np
-from ...tensor import factory as init
+from ..parameter import Parameter
 from .base import Base
 
 
@@ -10,16 +10,13 @@ class Linear(Base):
         self.is_bias = bias
 
     def build(self, in_shape):
-        
         self.in_features = in_shape[-1]
         limit = np.sqrt(6 / (self.in_features + self.out_features))
         W = np.random.uniform(-limit, limit, (self.out_features, self.in_features))
-        self.W = self.add_parameter("W", init.tensor(W, requires_grad=True))
+        self.add_parameter("W", Parameter(W))
 
         if self.is_bias:
-            self.B = self.add_parameter(
-                "B", init.zeros((self.out_features,), requires_grad=True)
-            )
+            self.add_parameter("B", Parameter(np.zeros((self.out_features,))))
         else:
             self.B = None
 
